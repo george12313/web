@@ -42,7 +42,7 @@ const Web3Integration = () => {
         try {
             const deposit= contract.methods.deposit();
             const balance = await web3.eth.getBalance(accounts[0]);
-            const depositAmount = Web3.utils.toHex( web3.utils.toWei(localValue, 'ether'));
+            const depositAmount =  web3.utils.toWei(localValue, 'ether');
 
             if (balance < depositAmount) {
                 console.error('Недостаточно средств на аккаунте для отправки депозита');
