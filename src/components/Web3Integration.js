@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Web3 from 'web3';
 import {config} from "../config";
+import {logDOM} from "@testing-library/react";
 
 const Web3Integration = () => {
     const [web3, setWeb3] = useState(null);
@@ -11,17 +12,13 @@ const Web3Integration = () => {
         const initWeb3 = async () => {
             if (window.ethereum) {
                 try {
-                    await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    const web3Instance = new Web3(new Web3.providers.HttpProvider('HTTP://127.0.0.1:7545'));
-                    // const web3Instance = new Web3(new Web3.providers.WebsocketProvider(
-                    //         'wss://eth-mainnet.g.alchemy.com/v2/ScK1WWZHRPgt8xtmGzmaPlCGLjX7VQPp',
-                    //     )
-                    // );
+                    await window.ethereum.enable();
+                    const web3Instance = new Web3(window.ethereum);
                     setWeb3(web3Instance);
 
                     const accounts = await web3Instance.eth.getAccounts();
+                    console.log("accounts", accounts)
                     setAccounts(accounts);
-
                     const contractAddress = config.contractAddress;
                     const contractABI = config.contractABI;
                     const contractInstance = new web3Instance.eth.Contract(contractABI, contractAddress);
@@ -40,32 +37,29 @@ const Web3Integration = () => {
 
     const handleDeposit = async () => {
         try {
-            const deposit= contract.methods.deposit();
-            const balance = await web3.eth.getBalance(accounts[0]);
-            const depositAmount =  web3.utils.toWei(localValue, 'ether');
+            const depositData =  contract.methods.deposit(
+                web3.utils.toHex( web3.utils.toWei(localValue, 'ether'))
+            ).encodeABI();
 
-            if (balance < depositAmount) {
-                console.error('Недостаточно средств на аккаунте для отправки депозита');
+            const balance = await web3.eth.getBalance(accounts[0]);
+            if (balance < localValue) {
+                console.error('Недостаточно средств на аккаунте для депозита');
                 return;
             }
 
-            // const transaction = {
-            //     from: accounts[0],
-            //     to: contract.options.address,
-            //     data: deposit.encodeABI(),
-            //     value: depositAmount,
-            //     gasLimit: 300000
-            // };
-
-            const testTransaction = {
+            const gasPrice = await web3.eth.getGasPrice()
+            const transaction = {
                 from: accounts[0],
-                to: accounts[1],
-                value: depositAmount
+                to: contract.options.address,
+                data: depositData,
+                value: '0x0',
+                gasPrice: web3.utils.toHex(gasPrice),
+                gasLimit: web3.utils.toHex(50000)
             };
 
-            web3.eth.sendTransaction(testTransaction)
+           await web3.eth.sendTransaction(transaction)
         } catch (error) {
-            console.error('Deposit Error:', error);
+            console.error('Error:', error.message);
         }
     };
 
